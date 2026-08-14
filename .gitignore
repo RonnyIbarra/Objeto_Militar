@@ -1,0 +1,29 @@
+# Entorno virtual
+.venv/
+venv/
+
+# Carpeta de entrenamiento (demasiado pesada)
+DeteccionEquipoSeguridad.v1i.yolov8/
+DeteccionEquipoSeguridad.v2i.yolov8/
+
+# Resultados de entrenamientos
+runs/
+
+# Cache de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE
+.idea/
+.vscode/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.tmp
+*.log
