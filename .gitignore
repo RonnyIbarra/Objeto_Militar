@@ -5,6 +5,12 @@ venv/
 # Carpeta de entrenamiento (demasiado pesada)
 DeteccionEquipoSeguridad.v1i.yolov8/
 DeteccionEquipoSeguridad.v2i.yolov8/
+DeteccionEquipoSeguridad.v3i.yolov8/
+
+# Imágenes de prueba y resultados
+Deteccion/
+Resultados/
+Resultados_Unificados/
 
 # Resultados de entrenamientos
 runs/
