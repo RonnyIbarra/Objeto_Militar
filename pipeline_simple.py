@@ -3,12 +3,11 @@ import os
 import sys
 import numpy as np
 from ultralytics import YOLO
-import mediapipe as mp
 
 # Configuraciones
 DEFAULT_CUSTOM_MODEL_PATH = r"runs\detect\train_v3_roboflow-5\weights\best.pt"
 PERSON_MODEL_PATH = "yolov8n.pt"
-OUTPUT_DIR = "Resultados"
+OUTPUT_DIR = "Resultados_Simples"
 
 CUSTOM_CLASSES = {0: "armaP", 1: "botas", 2: "buff", 3: "casco", 4: "chaleco", 5: "gafas", 6: "uniforme"}
 
@@ -54,7 +53,7 @@ def check_uniform_color(person_crop):
 def verify_person(image, person_box, custom_model, conf_threshold=0.20):
     """
     Recibe la imagen original y la bounding box de una persona.
-    Realiza recortes (zoom) y devuelve los objetos detectados y sus coordenadas absolutas.
+    Realiza un recorte simple (sin divisiones) y devuelve los objetos detectados.
     """
     x1, y1, x2, y2 = map(int, person_box)
     
@@ -71,24 +70,15 @@ def verify_person(image, person_box, custom_model, conf_threshold=0.20):
     
     tipo_cuerpo = "Cuerpo Completo" if aspect_ratio > 1.8 else "Medio Cuerpo"
     
-    # Recortes
+    # Recorte único (sin divisiones)
     person_crop = image[y1:y2, x1:x2]
-    
-    # Ampliamos la mitad superior al 75% de la altura para no cortar armas que lleguen hasta la cadera
-    y_mid_top = int(y1 + h_box * 0.75)
-    upper_crop = image[y1:y_mid_top, x1:x2]
-    
-    # Empezamos la mitad inferior más arriba (desde el 30%) para asegurar que la cintura y el arma entren completas
-    y_mid_bottom = int(y1 + h_box * 0.30)
-    lower_crop = image[y_mid_bottom:y2, x1:x2]
     
     detected_items = set()
     boxes_to_draw = []
     
-    def detect_on_crop(crop_img, offset_x, offset_y):
-        if crop_img.size == 0:
-            return
-        results = custom_model.predict(crop_img, conf=conf_threshold, verbose=False)
+    if person_crop.size > 0:
+        # Analizamos todo el recorte de la persona de una sola vez
+        results = custom_model.predict(person_crop, conf=conf_threshold, verbose=False)
         for r in results:
             if r.boxes is not None:
                 for box in r.boxes:
@@ -101,7 +91,7 @@ def verify_person(image, person_box, custom_model, conf_threshold=0.20):
                         
                         # REGLA DE CONFIANZA POR CLASE
                         min_conf = {
-                            "armaP": 0.20,
+                            "armaP": 0.30,
                             "botas": 0.40,
                             "buff": 0.40,
                             "casco": 0.20,
@@ -115,31 +105,18 @@ def verify_person(image, person_box, custom_model, conf_threshold=0.20):
                             
                         detected_items.add(class_name)
                         
-                        abs_x1 = bx1 + offset_x
-                        abs_y1 = by1 + offset_y
-                        abs_x2 = bx2 + offset_x
-                        abs_y2 = by2 + offset_y
+                        abs_x1 = bx1 + x1
+                        abs_y1 = by1 + y1
+                        abs_x2 = bx2 + x1
+                        abs_y2 = by2 + y1
                         
                         boxes_to_draw.append((class_name, conf, abs_x1, abs_y1, abs_x2, abs_y2))
 
-    # Analizar cuerpo entero
-    detect_on_crop(person_crop, x1, y1)
-    
-    # Analizar parte superior
-    detect_on_crop(upper_crop, x1, y1)
-    
-    # Analizar parte inferior
-    detect_on_crop(lower_crop, x1, y_mid_bottom)
-    
     # ====== LÓGICA EXTRA HÍBRIDA ======
-    
-    # 1. Comprobación del Uniforme por Color
     if "uniforme" not in detected_items:
         if check_uniform_color(person_crop):
             detected_items.add("uniforme")
-            # Agregamos una caja de dibujo ficticia (la persona misma)
             boxes_to_draw.append(("uniforme", 0.99, x1, y1, x2, y2))
-
     # ==================================
     
     return {
@@ -247,7 +224,7 @@ def main(path_input, custom_model_path=DEFAULT_CUSTOM_MODEL_PATH):
         process_image(path_input, person_model, custom_model)
     elif os.path.isdir(path_input):
         archivos = [f for f in os.listdir(path_input) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-        print(f"📁 Se encontraron {len(archivos)} imágenes en el directorio '{path_input}'")
+        print(f"📂 Se encontraron {len(archivos)} imágenes en el directorio '{path_input}'")
         for archivo in archivos:
             ruta_completa = os.path.join(path_input, archivo)
             process_image(ruta_completa, person_model, custom_model)
