@@ -6,7 +6,7 @@ from ultralytics import YOLO
 import mediapipe as mp
 
 # Configuraciones
-DEFAULT_CUSTOM_MODEL_PATH = r"runs\detect\train_v3_roboflow-5\weights\best.pt"
+DEFAULT_CUSTOM_MODEL_PATH = r"best.pt"
 PERSON_MODEL_PATH = "yolov8n.pt"
 OUTPUT_DIR = "Resultados"
 
