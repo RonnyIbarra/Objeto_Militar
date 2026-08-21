@@ -54,15 +54,16 @@ CLASS_CONFIDENCES = {
     "gafas": 0.45,      # Bajado para detectar mejor en diferentes ángulos
     "chaleco": 0.40,
     "botas": 0.40,
-    "casco": 0.15,      # Muy bajado para detectar cascos en cualquier pose
+    "casco": 0.35,      # Aumentado para evitar falsos positivos (sombras)
     "armaP": 0.15,      # Muy bajo porque las armas se deforman/ocultan
-    "uniforme": 0.30,   # Bajo porque el uniforme se deforma
+    "uniforme": 0.50,   # Aumentado para detectar solo uniformes reales
     "buff": 0.50,       # Más alto para evitar falsos positivos
 }
 
 def detect_uniform_hsv(image, bbox=None):
     """
     Detecta uniforme usando análisis de color HSV (verde militar/caqui)
+    Más estricto: solo verde/caqui, excluye azules
     """
     if bbox is not None:
         x1, y1, x2, y2 = bbox
@@ -73,14 +74,16 @@ def detect_uniform_hsv(image, bbox=None):
     # Convertir a HSV
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
-    # Rango para verde militar/caqui/olivo
-    lower_green1 = np.array([35, 30, 30])
-    upper_green1 = np.array([90, 255, 255])
+    # Rango ESTRICTO para verde militar/caqui/olivo (excluyendo azul)
+    # Verde: H 40-85
+    lower_green = np.array([40, 40, 40])
+    upper_green = np.array([85, 255, 255])
 
-    lower_brown = np.array([10, 30, 30])
+    # Caqui/marrón: H 10-25
+    lower_brown = np.array([10, 40, 40])
     upper_brown = np.array([25, 255, 255])
 
-    mask_green = cv2.inRange(hsv, lower_green1, upper_green1)
+    mask_green = cv2.inRange(hsv, lower_green, upper_green)
     mask_brown = cv2.inRange(hsv, lower_brown, upper_brown)
     mask_combined = cv2.bitwise_or(mask_green, mask_brown)
 
@@ -89,8 +92,8 @@ def detect_uniform_hsv(image, bbox=None):
     military_pixels = cv2.countNonZero(mask_combined)
     percentage = (military_pixels / total_pixels) * 100
 
-    # Si más del 15% tiene color militar, es uniforme
-    return percentage > 15.0, percentage
+    # Más exigente: 25% mínimo para detectar uniforme
+    return percentage > 25.0, percentage
 
 def detect_in_crops(image, person_bbox):
     """
