@@ -49,12 +49,12 @@ print("🚀 Modelos se cargarán bajo demanda")
 REQUIRED_CLASSES = {"armaP", "botas", "buff", "casco", "chaleco", "gafas", "uniforme"}
 CLASS_NAMES = {0: "armaP", 1: "botas", 2: "buff", 3: "casco", 4: "chaleco", 5: "gafas", 6: "uniforme"}
 
-# Umbrales inteligentes por clase
+# Umbrales inteligentes por clase (calibrados para mejor detección)
 CLASS_CONFIDENCES = {
-    "gafas": 0.65,      # Alto para evitar falsos positivos
+    "gafas": 0.45,      # Bajado para detectar mejor en diferentes ángulos
     "chaleco": 0.40,
     "botas": 0.40,
-    "casco": 0.25,      # Bajo porque el casco se dificulta detectar
+    "casco": 0.15,      # Muy bajado para detectar cascos en cualquier pose
     "armaP": 0.15,      # Muy bajo porque las armas se deforman/ocultan
     "uniforme": 0.30,   # Bajo porque el uniforme se deforma
     "buff": 0.50,       # Más alto para evitar falsos positivos
