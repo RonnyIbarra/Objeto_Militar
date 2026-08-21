@@ -1,67 +1,43 @@
 import os
-os.environ['YOLO_VERBOSE'] = 'False'
-os.environ['YOLO_SETTINGS_FOLDER'] = '/tmp'
-
+import torch
 from flask import Flask, request, jsonify
-from ultralytics import YOLO
 import cv2
 import numpy as np
 from io import BytesIO
 import base64
-import sys
-import threading
-import time
 
 app = Flask(__name__)
 
 # Variables globales
-models_loaded = False
-load_error = None
-model_specialized = None
-model_generic = None
+model = None
 
-def get_models():
-    """Carga los modelos lazily (solo cuando se necesitan)"""
-    global models_loaded, load_error, model_specialized, model_generic
+def load_model():
+    """Carga el modelo de detección"""
+    global model
+    if model is None:
+        try:
+            # Buscar best.pt en diferentes ubicaciones
+            model_paths = ["./best.pt", "/app/best.pt", "best.pt"]
+            model_path = None
 
-    if models_loaded:
-        return model_specialized, model_generic
+            for path in model_paths:
+                if os.path.exists(path):
+                    model_path = path
+                    print(f"✅ Modelo encontrado en: {model_path}")
+                    break
 
-    try:
-        # Encontrar best.pt
-        MODEL_PATHS = [
-            r"C:\Users\ronny\Downloads\Modelo Entrenado\best.pt",
-            r"C:\Users\ronny\OneDrive\Documents\Copia de seguridad\Copia\Codigo Deteccion\codigo_deteccion\assets\best.pt",
-            "/app/best.pt",
-        ]
+            if not model_path:
+                raise FileNotFoundError(f"best.pt no encontrado")
 
-        MODEL_PATH = None
-        for path in MODEL_PATHS:
-            if os.path.exists(path):
-                MODEL_PATH = path
-                print(f"✅ Modelo especializado encontrado en: {MODEL_PATH}")
-                break
+            print("⏳ Cargando modelo...")
+            model = torch.jit.load(model_path)
+            model.eval()
+            print("✅ Modelo cargado correctamente")
+        except Exception as e:
+            print(f"❌ Error cargando modelo: {e}")
+            raise
 
-        if not MODEL_PATH:
-            raise FileNotFoundError(f"best.pt no encontrado. Rutas buscadas: {MODEL_PATHS}")
-
-        print("⏳ Cargando modelo especializado...")
-        model_specialized = YOLO(MODEL_PATH)
-        print("✅ Modelo especializado cargado")
-
-        print("⏳ Cargando modelo genérico...")
-        model_generic = YOLO('yolov8n.pt')
-        print("✅ Modelo genérico cargado")
-
-        models_loaded = True
-        print("🎉 TODOS LOS MODELOS LISTOS")
-        return model_specialized, model_generic
-    except Exception as e:
-        load_error = str(e)
-        print(f"❌ Error cargando modelos: {e}")
-        raise
-
-print("🚀 Modelos se cargarán bajo demanda (lazy loading)")
+print("🚀 Modelo se cargará bajo demanda")
 
 REQUIRED_CLASSES = {"armaP", "botas", "buff", "casco", "chaleco", "gafas", "uniforme"}
 CLASS_NAMES = {0: "armaP", 1: "botas", 2: "buff", 3: "casco", 4: "chaleco", 5: "gafas", 6: "uniforme"}
@@ -110,152 +86,97 @@ def detect_uniform_hsv(image, bbox=None):
     # Si más del 15% tiene color militar, es uniforme
     return percentage > 15.0, percentage
 
-def detect_in_crops(image, person_bbox):
+def simple_detect(image):
     """
-    Aplica recortes estratégicos para detectar mejor objetos pequeños
+    Detección simple con el modelo YOLO
     """
-    x1, y1, x2, y2 = person_bbox
-    h = y2 - y1
-    w = x2 - x1
+    try:
+        # Redimensionar imagen si es muy grande
+        height, width = image.shape[:2]
+        if max(height, width) > 640:
+            scale = 640 / max(height, width)
+            image = cv2.resize(image, (int(width * scale), int(height * scale)))
 
-    detected_classes = {}
+        # Normalizar y convertir a tensor
+        img_tensor = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
+        img_tensor = img_tensor.unsqueeze(0)
 
-    # 1. Imagen completa de la persona
-    crop_full = image[int(y1):int(y2), int(x1):int(x2)]
-    results_full = model_specialized.predict(crop_full, conf=0.15, verbose=False)
+        # Ejecutar modelo
+        with torch.no_grad():
+            predictions = model(img_tensor)
 
-    # 2. Mitad superior (75% de arriba) - cabeza y torso
-    crop_top = image[int(y1):int(y1 + h*0.75), int(x1):int(x2)]
-    results_top = model_specialized.predict(crop_top, conf=0.15, verbose=False)
+        detected_classes = {}
 
-    # 3. Mitad inferior (70% de abajo) - armas y botas
-    crop_bottom = image[int(y2 - h*0.70):int(y2), int(x1):int(x2)]
-    results_bottom = model_specialized.predict(crop_bottom, conf=0.15, verbose=False)
+        # Procesar predicciones (formato puede variar)
+        if isinstance(predictions, dict):
+            if 'detections' in predictions:
+                dets = predictions['detections']
+                if dets is not None and len(dets) > 0:
+                    for det in dets:
+                        # det: [x1, y1, x2, y2, conf, class_id]
+                        confidence = float(det[4])
+                        class_id = int(det[5])
+                        class_name = CLASS_NAMES.get(class_id, f"class_{class_id}")
 
-    # Procesar resultados
-    for results in [results_full, results_top, results_bottom]:
-        for result in results:
-            if result.boxes is not None:
-                for box in result.boxes:
-                    class_id = int(box.cls[0])
-                    confidence = float(box.conf[0])
-                    class_name = result.names.get(class_id, "unknown")
+                        threshold = CLASS_CONFIDENCES.get(class_name, 0.3)
+                        if confidence >= threshold:
+                            if class_name not in detected_classes:
+                                detected_classes[class_name] = confidence
+                            else:
+                                detected_classes[class_name] = max(detected_classes[class_name], confidence)
 
-                    # Aplicar umbral específico por clase
-                    threshold = CLASS_CONFIDENCES.get(class_name, 0.3)
-
-                    if class_name in CLASS_NAMES.values() and confidence >= threshold:
-                        if class_name not in detected_classes:
-                            detected_classes[class_name] = confidence
-                        else:
-                            detected_classes[class_name] = max(detected_classes[class_name], confidence)
-
-    return detected_classes
+        return detected_classes
+    except Exception as e:
+        print(f"⚠️ Error en detección: {e}")
+        return {}
 
 @app.route('/detect', methods=['POST'])
 def detect():
-    """
-    Pipeline completo: Detecta personas, aplica recortes estratégicos,
-    usa umbrales inteligentes, análisis HSV para uniforme
-    """
+    """Detecta equipamiento militar en imagen"""
     try:
-        # Cargar modelos si aún no están cargados
-        if not models_loaded:
-            print("🔄 Cargando modelos por primera vez...")
-            global model_specialized, model_generic
-            model_specialized, model_generic = get_models()
+        load_model()
 
         data = request.json
         if not data:
-            print("❌ No JSON data received")
             return jsonify({'error': 'No JSON data'}), 400
 
         image_base64 = data.get('image')
         if not image_base64:
-            print("❌ No image key in JSON")
             return jsonify({'error': 'No image provided'}), 400
 
-        print(f"🔍 Imagen recibida, tamaño base64: {len(image_base64)} bytes")
+        print(f"🔍 Procesando imagen ({len(image_base64)} bytes)...")
 
-        # Decodificar imagen
-        try:
-            image_bytes = base64.b64decode(image_base64)
-            print(f"✅ Decodificación exitosa: {len(image_bytes)} bytes")
-        except Exception as e:
-            print(f"❌ Error decodificando base64: {e}")
-            return jsonify({'error': f'Base64 decode error: {e}'}), 400
-
+        # Decodificar
+        image_bytes = base64.b64decode(image_base64)
         nparr = np.frombuffer(image_bytes, np.uint8)
         image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
         if image is None:
-            print(f"⚠️ cv2.imdecode falló, intentando con PIL...")
-            try:
-                from PIL import Image
-                pil_image = Image.open(BytesIO(image_bytes))
-                image = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
-                print(f"✅ Imagen procesada con PIL: {image.shape}")
-            except Exception as e:
-                print(f"❌ Tampoco funcionó con PIL: {e}")
-                return jsonify({'error': f'Invalid image format: {e}'}), 400
-        else:
-            print(f"✅ Imagen procesada con cv2: {image.shape}")
+            return jsonify({'error': 'Invalid image format'}), 400
 
-        # PASO 1: Detectar personas con modelo genérico
-        print("🔍 Paso 1: Detectando personas...")
-        results_persons = model_generic.predict(image, classes=0, conf=0.5, verbose=False)  # clase 0 = persona
+        print(f"✅ Imagen decodificada: {image.shape}")
 
-        detected_classes = {}
-        person_count = 0
+        # Detectar
+        detected_classes = simple_detect(image)
 
-        if results_persons and len(results_persons) > 0:
-            result = results_persons[0]
-            if result.boxes is not None and len(result.boxes) > 0:
-                print(f"✅ Detectadas {len(result.boxes)} persona(s)")
+        # Análisis HSV para uniforme
+        has_uniform, pct = detect_uniform_hsv(image)
+        if has_uniform and "uniforme" not in detected_classes:
+            detected_classes["uniforme"] = 0.85
 
-                for box in result.boxes:
-                    person_count += 1
-                    person_bbox = box.xyxy[0].tolist()  # [x1, y1, x2, y2]
-                    print(f"\n👤 Analizando Persona {person_count}...")
-
-                    # PASO 2: Aplicar recortes estratégicos
-                    print("📐 Paso 2: Aplicando recortes estratégicos...")
-                    detected_in_crops = detect_in_crops(image, person_bbox)
-
-                    # Fusionar detecciones
-                    for class_name, conf in detected_in_crops.items():
-                        if class_name not in detected_classes:
-                            detected_classes[class_name] = conf
-                        else:
-                            detected_classes[class_name] = max(detected_classes[class_name], conf)
-
-                    # PASO 3: Análisis HSV para uniforme
-                    print("🎨 Paso 3: Analizando color para uniforme...")
-                    has_uniform, uniform_percent = detect_uniform_hsv(image, person_bbox)
-                    if has_uniform and "uniforme" not in detected_classes:
-                        detected_classes["uniforme"] = 0.85  # Confianza alta si HSV lo detecta
-                        print(f"✅ Uniforme detectado por HSV ({uniform_percent:.1f}% verde militar)")
-
-                    print(f"✅ Equipos detectados en Persona {person_count}: {list(detected_in_crops.keys())}")
-            else:
-                print("⚠️ No se detectaron personas en la imagen")
-        else:
-            print("⚠️ No se detectaron personas en la imagen")
-
-        # PASO 4: Determinar APTO/NO APTO
+        # Determinar APTO
         detected_set = set(detected_classes.keys())
-        missing_classes = list(REQUIRED_CLASSES - detected_set)
-        is_apto = len(missing_classes) == 0
+        missing = list(REQUIRED_CLASSES - detected_set)
+        is_apto = len(missing) == 0
 
-        print(f"\n📊 RESULTADO FINAL:")
-        print(f"   Detectados: {list(detected_set)}")
-        print(f"   Faltantes: {missing_classes}")
-        print(f"   Estado: {'APTO ✅' if is_apto else 'NO APTO ❌'}")
+        print(f"📊 Detectados: {list(detected_set)}")
+        print(f"📊 Faltantes: {missing}")
+        print(f"📊 Estado: {'APTO ✅' if is_apto else 'NO APTO ❌'}")
 
         return jsonify({
             'apto': is_apto,
             'detected': detected_classes,
-            'missing': missing_classes,
+            'missing': missing,
             'message': 'APTO ✅' if is_apto else 'NO APTO ❌'
         })
 
@@ -265,26 +186,12 @@ def detect():
 
 @app.route('/health', methods=['GET'])
 def health():
-    """Health check que espera a que los modelos estén listos"""
-    if not models_loaded:
-        # Si aún se están cargando, retorna 503 (Service Unavailable)
-        # Cloud Run esperará y reintentará
-        return jsonify({
-            'status': 'LOADING',
-            'message': 'Modelos cargándose...'
-        }), 503
-
-    return jsonify({
-        'status': 'OK',
-        'models_ready': True,
-        'message': 'Listo para detectar'
-    }), 200
+    """Health check"""
+    return jsonify({'status': 'OK'}), 200
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     print(f"🚀 Flask API iniciado en http://0.0.0.0:{port}")
-    print("POST /detect - Detectar equipo militar")
-    print("GET /health - Estado del servidor")
-    print(f"⏳ Esperando a que los modelos terminen de cargar...")
-    # Usar threaded=True para manejar múltiples requests
-    app.run(host='0.0.0.0', port=port, debug=False, threaded=True, use_reloader=False)
+    print("POST /detect - Detectar equipo")
+    print("GET /health - Status")
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
