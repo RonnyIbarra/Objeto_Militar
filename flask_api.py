@@ -49,11 +49,11 @@ print("🚀 Modelos se cargarán bajo demanda")
 REQUIRED_CLASSES = {"armaP", "botas", "buff", "casco", "chaleco", "gafas", "uniforme"}
 CLASS_NAMES = {0: "armaP", 1: "botas", 2: "buff", 3: "casco", 4: "chaleco", 5: "gafas", 6: "uniforme"}
 
-# Umbrales conservadores para evitar falsos positivos
+# Umbrales balanceados para buena detección
 CLASS_CONFIDENCES = {
-    "gafas": 0.60,      # Alto para evitar sombras
+    "gafas": 0.50,      # Bajado para detectar mejor
     "chaleco": 0.55,    # Alto para evitar falsos positivos
-    "botas": 0.55,      # Alto para evitar falsos positivos
+    "botas": 0.50,      # Bajado para detectar mejor
     "casco": 0.50,      # Moderado para detectar bien
     "armaP": 0.30,      # Bajo para armas
     "uniforme": 0.50,   # Moderado para uniformes reales
