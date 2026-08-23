@@ -213,12 +213,9 @@ def detect():
                         else:
                             detected_classes[class_name] = max(detected_classes[class_name], conf)
 
-                    # PASO 3: Análisis HSV para uniforme
-                    print("🎨 Paso 3: Analizando color para uniforme...")
-                    has_uniform, uniform_percent = detect_uniform_hsv(image, person_bbox)
-                    if has_uniform and "uniforme" not in detected_classes:
-                        detected_classes["uniforme"] = 0.85  # Confianza alta si HSV lo detecta
-                        print(f"✅ Uniforme detectado por HSV ({uniform_percent:.1f}% verde militar)")
+                    # PASO 3: HSV deshabilitado - confiar solo en YOLO
+                    # (HSV tenía demasiados falsos positivos)
+                    print("🎨 Paso 3: Usando solo detección YOLO para uniforme")
 
                     print(f"✅ Equipos detectados en Persona {person_count}: {list(detected_in_crops.keys())}")
             else:
