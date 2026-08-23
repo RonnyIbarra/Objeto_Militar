@@ -51,7 +51,7 @@ CLASS_NAMES = {0: "armaP", 1: "botas", 2: "buff", 3: "casco", 4: "chaleco", 5: "
 
 # Umbrales balanceados para buena detección
 CLASS_CONFIDENCES = {
-    "gafas": 0.50,      # Bajado para detectar mejor
+    "gafas": 0.45,      # MÁS BAJADO para detectar mejor
     "chaleco": 0.55,    # Alto para evitar falsos positivos
     "botas": 0.50,      # Bajado para detectar mejor
     "casco": 0.50,      # Moderado para detectar bien
