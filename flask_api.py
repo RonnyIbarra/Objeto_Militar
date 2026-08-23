@@ -54,9 +54,9 @@ CLASS_CONFIDENCES = {
     "gafas": 0.45,      # Detección óptima de gafas
     "chaleco": 0.45,    # Detección óptima de chaleco
     "botas": 0.45,      # Detección óptima de botas
-    "casco": 0.45,      # Detección óptima de casco
+    "casco": 0.25,      # Bajado para detectar cascos con cualquier ángulo
     "armaP": 0.20,      # Muy bajo para armas
-    "uniforme": 0.45,   # Detección óptima de uniforme
+    "uniforme": 0.25,   # Bajado para detectar uniformes mejor
     "buff": 0.45,       # Detección óptima de buff
 }
 
