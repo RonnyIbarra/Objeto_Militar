@@ -49,15 +49,15 @@ print("🚀 Modelos se cargarán bajo demanda")
 REQUIRED_CLASSES = {"armaP", "botas", "buff", "casco", "chaleco", "gafas", "uniforme"}
 CLASS_NAMES = {0: "armaP", 1: "botas", 2: "buff", 3: "casco", 4: "chaleco", 5: "gafas", 6: "uniforme"}
 
-# Umbrales balanceados para buena detección
+# Umbrales según pipeline_militar.py (documento original)
 CLASS_CONFIDENCES = {
-    "gafas": 0.45,      # MÁS BAJADO para detectar mejor
-    "chaleco": 0.55,    # Alto para evitar falsos positivos
-    "botas": 0.50,      # Bajado para detectar mejor
-    "casco": 0.50,      # Moderado para detectar bien
-    "armaP": 0.30,      # Bajo para armas
-    "uniforme": 0.50,   # Moderado para uniformes reales
-    "buff": 0.70,       # MÁS ALTO para evitar detectar ropa negra
+    "gafas": 0.65,      # 65% según documento
+    "chaleco": 0.40,    # 40% según documento
+    "botas": 0.40,      # 40% según documento
+    "casco": 0.40,      # 40% según documento (ERA 0.50, AHORA CORRECTO)
+    "armaP": 0.30,      # 30% según documento
+    "uniforme": 0.30,   # 30% según documento
+    "buff": 0.50,       # Moderado para evitar falsos positivos
 }
 
 def detect_uniform_hsv(image, bbox=None):
