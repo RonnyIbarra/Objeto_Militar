@@ -49,15 +49,15 @@ print("🚀 Modelos se cargarán bajo demanda")
 REQUIRED_CLASSES = {"armaP", "botas", "buff", "casco", "chaleco", "gafas", "uniforme"}
 CLASS_NAMES = {0: "armaP", 1: "botas", 2: "buff", 3: "casco", 4: "chaleco", 5: "gafas", 6: "uniforme"}
 
-# Umbrales inteligentes por clase (MÁS ESTRICTOS para evitar falsos positivos)
+# Umbrales inteligentes por clase (BALANCEADOS para máxima detección)
 CLASS_CONFIDENCES = {
-    "gafas": 0.55,      # Más alto para evitar sombras/reflejos
-    "chaleco": 0.60,    # Aumentado significativamente
-    "botas": 0.60,      # Aumentado significativamente
-    "casco": 0.55,      # Aumentado para evitar sombreros/gorras
-    "armaP": 0.25,      # Aumentado un poco
-    "uniforme": 0.60,   # Más estricto para uniformes reales
-    "buff": 0.60,       # Más estricto
+    "gafas": 0.45,      # Detección óptima de gafas
+    "chaleco": 0.45,    # Detección óptima de chaleco
+    "botas": 0.45,      # Detección óptima de botas
+    "casco": 0.45,      # Detección óptima de casco
+    "armaP": 0.20,      # Muy bajo para armas
+    "uniforme": 0.45,   # Detección óptima de uniforme
+    "buff": 0.45,       # Detección óptima de buff
 }
 
 def detect_uniform_hsv(image, bbox=None):
