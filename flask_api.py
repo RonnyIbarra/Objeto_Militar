@@ -57,7 +57,7 @@ CLASS_CONFIDENCES = {
     "casco": 0.50,      # Moderado para detectar bien
     "armaP": 0.30,      # Bajo para armas
     "uniforme": 0.50,   # Moderado para uniformes reales
-    "buff": 0.60,       # Alto para evitar falsos positivos
+    "buff": 0.70,       # MÁS ALTO para evitar detectar ropa negra
 }
 
 def detect_uniform_hsv(image, bbox=None):
