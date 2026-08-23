@@ -49,12 +49,12 @@ print("🚀 Modelos se cargarán bajo demanda")
 REQUIRED_CLASSES = {"armaP", "botas", "buff", "casco", "chaleco", "gafas", "uniforme"}
 CLASS_NAMES = {0: "armaP", 1: "botas", 2: "buff", 3: "casco", 4: "chaleco", 5: "gafas", 6: "uniforme"}
 
-# Umbrales según pipeline_militar.py (documento original)
+# Umbrales ajustados para mejor detección
 CLASS_CONFIDENCES = {
-    "gafas": 0.65,      # 65% según documento
+    "gafas": 0.55,      # Bajado a 0.55 (65% era muy alto)
     "chaleco": 0.40,    # 40% según documento
     "botas": 0.40,      # 40% según documento
-    "casco": 0.40,      # 40% según documento (ERA 0.50, AHORA CORRECTO)
+    "casco": 0.40,      # 40% según documento
     "armaP": 0.30,      # 30% según documento
     "uniforme": 0.30,   # 30% según documento
     "buff": 0.50,       # Moderado para evitar falsos positivos
