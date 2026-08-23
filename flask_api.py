@@ -92,8 +92,8 @@ def detect_uniform_hsv(image, bbox=None):
     military_pixels = cv2.countNonZero(mask_combined)
     percentage = (military_pixels / total_pixels) * 100
 
-    # Muy exigente: 30% mínimo
-    return percentage > 30.0, percentage
+    # Moderado: 20% mínimo para detectar uniformes reales
+    return percentage > 20.0, percentage
 
 def detect_in_crops(image, person_bbox):
     """
