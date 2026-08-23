@@ -63,7 +63,7 @@ CLASS_CONFIDENCES = {
 def detect_uniform_hsv(image, bbox=None):
     """
     Detecta uniforme usando análisis de color HSV
-    SUPER ESTRICTO: Solo verde militar puro, nada de azul/negro
+    AMPLIO: Captura todo tipo de verde/caqui militar
     """
     if bbox is not None:
         x1, y1, x2, y2 = bbox
@@ -74,13 +74,13 @@ def detect_uniform_hsv(image, bbox=None):
     # Convertir a HSV (en OpenCV: H 0-180, S 0-255, V 0-255)
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
-    # SUPER ESTRICTO: Solo verde saturado (H 45-75, S>100)
-    lower_green = np.array([45, 100, 50])
-    upper_green = np.array([75, 255, 255])
+    # Rango 1: Verde claro a oscuro (H 35-85, S>40)
+    lower_green = np.array([35, 40, 40])
+    upper_green = np.array([85, 255, 255])
 
-    # Caqui/marrón puro (H 15-25, S>80)
-    lower_brown = np.array([15, 80, 50])
-    upper_brown = np.array([25, 255, 255])
+    # Rango 2: Caqui/marrón (H 10-30, S>30)
+    lower_brown = np.array([10, 30, 40])
+    upper_brown = np.array([30, 255, 255])
 
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
     mask_brown = cv2.inRange(hsv, lower_brown, upper_brown)
@@ -92,8 +92,8 @@ def detect_uniform_hsv(image, bbox=None):
     military_pixels = cv2.countNonZero(mask_combined)
     percentage = (military_pixels / total_pixels) * 100
 
-    # Moderado: 20% mínimo para detectar uniformes reales
-    return percentage > 20.0, percentage
+    # Moderado: 18% mínimo
+    return percentage > 18.0, percentage
 
 def detect_in_crops(image, person_bbox):
     """
