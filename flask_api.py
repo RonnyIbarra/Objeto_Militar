@@ -62,8 +62,8 @@ CLASS_CONFIDENCES = {
 
 def detect_uniform_hsv(image, bbox=None):
     """
-    Detecta uniforme usando análisis de color HSV (verde militar/caqui)
-    Más estricto: solo verde/caqui, excluye azules
+    Detecta uniforme usando análisis de color HSV (verde militar/caqui/olivo)
+    Optimizado para camuflaje digital y OCP
     """
     if bbox is not None:
         x1, y1, x2, y2 = bbox
@@ -71,29 +71,35 @@ def detect_uniform_hsv(image, bbox=None):
     else:
         roi = image
 
-    # Convertir a HSV
+    # Convertir a HSV (en OpenCV: H 0-180, S 0-255, V 0-255)
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
-    # Rango ESTRICTO para verde militar/caqui/olivo (excluyendo azul)
-    # Verde: H 40-85
-    lower_green = np.array([40, 40, 40])
-    upper_green = np.array([85, 255, 255])
+    # RANGO 1: Verde puro militar (H 35-80)
+    lower_green1 = np.array([35, 25, 25])
+    upper_green1 = np.array([80, 255, 255])
 
-    # Caqui/marrón: H 10-25
-    lower_brown = np.array([10, 40, 40])
-    upper_brown = np.array([25, 255, 255])
+    # RANGO 2: Verde olivo oscuro (H 15-35)
+    lower_olive = np.array([15, 25, 25])
+    upper_olive = np.array([35, 255, 255])
 
-    mask_green = cv2.inRange(hsv, lower_green, upper_green)
+    # RANGO 3: Caqui/marrón claro (H 8-20)
+    lower_brown = np.array([8, 20, 20])
+    upper_brown = np.array([20, 255, 255])
+
+    mask_green = cv2.inRange(hsv, lower_green1, upper_green1)
+    mask_olive = cv2.inRange(hsv, lower_olive, upper_olive)
     mask_brown = cv2.inRange(hsv, lower_brown, upper_brown)
-    mask_combined = cv2.bitwise_or(mask_green, mask_brown)
+
+    # Combinar todos los rangos
+    mask_combined = cv2.bitwise_or(cv2.bitwise_or(mask_green, mask_olive), mask_brown)
 
     # Calcular porcentaje de píxeles con color militar
     total_pixels = mask_combined.size
     military_pixels = cv2.countNonZero(mask_combined)
     percentage = (military_pixels / total_pixels) * 100
 
-    # Más exigente: 25% mínimo para detectar uniforme
-    return percentage > 25.0, percentage
+    # Umbral bajo para detectar cualquier uniforme
+    return percentage > 12.0, percentage
 
 def detect_in_crops(image, person_bbox):
     """
