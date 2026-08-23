@@ -107,15 +107,15 @@ def detect_in_crops(image, person_bbox):
 
     # 1. Imagen completa de la persona
     crop_full = image[int(y1):int(y2), int(x1):int(x2)]
-    results_full = model_specialized.predict(crop_full, conf=0.15, verbose=False)
+    results_full = model_specialized.predict(crop_full, conf=0.10, verbose=False)
 
     # 2. Mitad superior (75% de arriba) - cabeza y torso
     crop_top = image[int(y1):int(y1 + h*0.75), int(x1):int(x2)]
-    results_top = model_specialized.predict(crop_top, conf=0.15, verbose=False)
+    results_top = model_specialized.predict(crop_top, conf=0.10, verbose=False)
 
     # 3. Mitad inferior (70% de abajo) - armas y botas
     crop_bottom = image[int(y2 - h*0.70):int(y2), int(x1):int(x2)]
-    results_bottom = model_specialized.predict(crop_bottom, conf=0.15, verbose=False)
+    results_bottom = model_specialized.predict(crop_bottom, conf=0.10, verbose=False)
 
     # Procesar resultados
     for results in [results_full, results_top, results_bottom]:
