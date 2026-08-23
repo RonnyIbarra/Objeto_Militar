@@ -49,21 +49,21 @@ print("🚀 Modelos se cargarán bajo demanda")
 REQUIRED_CLASSES = {"armaP", "botas", "buff", "casco", "chaleco", "gafas", "uniforme"}
 CLASS_NAMES = {0: "armaP", 1: "botas", 2: "buff", 3: "casco", 4: "chaleco", 5: "gafas", 6: "uniforme"}
 
-# Umbrales inteligentes por clase (BALANCEADOS para máxima detección)
+# Umbrales conservadores para evitar falsos positivos
 CLASS_CONFIDENCES = {
-    "gafas": 0.45,      # Detección óptima de gafas
-    "chaleco": 0.45,    # Detección óptima de chaleco
-    "botas": 0.45,      # Detección óptima de botas
-    "casco": 0.25,      # Bajado para detectar cascos con cualquier ángulo
-    "armaP": 0.20,      # Muy bajo para armas
-    "uniforme": 0.25,   # Bajado para detectar uniformes mejor
-    "buff": 0.45,       # Detección óptima de buff
+    "gafas": 0.60,      # Alto para evitar sombras
+    "chaleco": 0.55,    # Alto para evitar falsos positivos
+    "botas": 0.55,      # Alto para evitar falsos positivos
+    "casco": 0.50,      # Moderado para detectar bien
+    "armaP": 0.30,      # Bajo para armas
+    "uniforme": 0.50,   # Moderado para uniformes reales
+    "buff": 0.60,       # Alto para evitar falsos positivos
 }
 
 def detect_uniform_hsv(image, bbox=None):
     """
-    Detecta uniforme usando análisis de color HSV (SOLO verde/caqui real)
-    Excluye azul, negro y otros colores
+    Detecta uniforme usando análisis de color HSV
+    SUPER ESTRICTO: Solo verde militar puro, nada de azul/negro
     """
     if bbox is not None:
         x1, y1, x2, y2 = bbox
@@ -74,28 +74,26 @@ def detect_uniform_hsv(image, bbox=None):
     # Convertir a HSV (en OpenCV: H 0-180, S 0-255, V 0-255)
     hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
 
-    # RANGO ESTRICTO: Solo verde real (no azul, no negro)
-    # Verde puro: H 40-80 con saturación media-alta
-    lower_green = np.array([40, 50, 50])
-    upper_green = np.array([80, 255, 255])
+    # SUPER ESTRICTO: Solo verde saturado (H 45-75, S>100)
+    lower_green = np.array([45, 100, 50])
+    upper_green = np.array([75, 255, 255])
 
-    # Caqui/marrón: H 12-25 con saturación media
-    lower_brown = np.array([12, 40, 40])
+    # Caqui/marrón puro (H 15-25, S>80)
+    lower_brown = np.array([15, 80, 50])
     upper_brown = np.array([25, 255, 255])
 
     mask_green = cv2.inRange(hsv, lower_green, upper_green)
     mask_brown = cv2.inRange(hsv, lower_brown, upper_brown)
 
-    # Combinar rangos
     mask_combined = cv2.bitwise_or(mask_green, mask_brown)
 
-    # Calcular porcentaje de píxeles con color militar
+    # Calcular porcentaje
     total_pixels = mask_combined.size
     military_pixels = cv2.countNonZero(mask_combined)
     percentage = (military_pixels / total_pixels) * 100
 
-    # Más exigente: 20% mínimo para detectar uniforme
-    return percentage > 20.0, percentage
+    # Muy exigente: 30% mínimo
+    return percentage > 30.0, percentage
 
 def detect_in_crops(image, person_bbox):
     """
@@ -213,9 +211,12 @@ def detect():
                         else:
                             detected_classes[class_name] = max(detected_classes[class_name], conf)
 
-                    # PASO 3: HSV deshabilitado - confiar solo en YOLO
-                    # (HSV tenía demasiados falsos positivos)
-                    print("🎨 Paso 3: Usando solo detección YOLO para uniforme")
+                    # PASO 3: Análisis HSV para uniforme (RESTRINGIDO a verde real)
+                    print("🎨 Paso 3: Analizando color para uniforme...")
+                    has_uniform, uniform_percent = detect_uniform_hsv(image, person_bbox)
+                    if has_uniform and "uniforme" not in detected_classes:
+                        detected_classes["uniforme"] = 0.85
+                        print(f"✅ Uniforme detectado por HSV ({uniform_percent:.1f}% verde militar)")
 
                     print(f"✅ Equipos detectados en Persona {person_count}: {list(detected_in_crops.keys())}")
             else:
