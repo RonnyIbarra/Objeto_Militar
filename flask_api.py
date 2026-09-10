@@ -568,11 +568,16 @@ def detect():
         print(f"   Total personas: {len(results_all)}")
         print(f"   Estado global: {'APTO ✅' if is_apto else 'NO APTO ❌'}")
 
+        # Obtener dimensiones de la imagen
+        image_height, image_width = image.shape[:2]
+
         return jsonify({
             'apto': is_apto,
             'detected': detected_all,
             'missing': missing_classes,
             'boxes': boxes_all,
+            'image_width': image_width,
+            'image_height': image_height,
             'personas': results_all,
             'message': 'APTO ✅' if is_apto else 'NO APTO ❌'
         })
