@@ -510,11 +510,37 @@ def detect():
                     # Dictamen final
                     es_apto = (len(elementos_faltantes) == 0) and (len(faltas_detectadas) == 0)
 
+                    # Extraer coordenadas de bounding boxes
+                    boxes_with_coords = {}
+                    for box in result_info.get("boxes", []):
+                        class_name = box[0]
+                        confidence = float(box[1])
+                        x1, y1, x2, y2 = float(box[2]), float(box[3]), float(box[4]), float(box[5])
+
+                        # Calcular centro y dimensiones
+                        center_x = (x1 + x2) / 2
+                        center_y = (y1 + y2) / 2
+                        width = x2 - x1
+                        height = y2 - y1
+
+                        boxes_with_coords[class_name] = {
+                            "confidence": confidence,
+                            "x1": x1,
+                            "y1": y1,
+                            "x2": x2,
+                            "y2": y2,
+                            "center_x": center_x,
+                            "center_y": center_y,
+                            "width": width,
+                            "height": height
+                        }
+
                     results_all.append({
                         "persona": box_idx,
                         "tipo_cuerpo": tipo_cuerpo,
                         "apto": es_apto,
                         "detected": detected_dict,
+                        "boxes": boxes_with_coords,
                         "equipos_presentes": equipos_presentes,
                         "faltas": faltas_detectadas,
                         "faltantes": elementos_faltantes,
@@ -531,10 +557,12 @@ def detect():
         is_apto = all(r["apto"] for r in results_all) if results_all else False
         missing_classes = []
         detected_all = {}
+        boxes_all = {}
 
         if results_all:
             detected_all = results_all[0]["detected"]
             missing_classes = results_all[0]["faltantes"]
+            boxes_all = results_all[0].get("boxes", {})
 
         print(f"\n📊 RESULTADO FINAL:")
         print(f"   Total personas: {len(results_all)}")
@@ -544,6 +572,7 @@ def detect():
             'apto': is_apto,
             'detected': detected_all,
             'missing': missing_classes,
+            'boxes': boxes_all,
             'personas': results_all,
             'message': 'APTO ✅' if is_apto else 'NO APTO ❌'
         })
