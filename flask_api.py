@@ -387,27 +387,14 @@ def detect_in_crops(image, person_bbox, full_image_results=None, flipped_image_r
 
     detected_items = set(b[0] for b in valid_boxes)
 
-    # 10. Lógica de prioridad: eliminar infracciones si el equipo positivo existe
-    # Mapeo de infracciones a equipos positivos
-    infraction_map = {
-        "no_botas": "botas",
-        "sin_buff": "buff",
-        "sin_chaleco": "chaleco",
-        "sin_guantes": "guantes",
-        "sin_uniforme": "uniforme",
-    }
+    # 10. Separar equipos de infracciones
+    # Las infracciones solo se usan para validación, NO se retornan como detectados
+    infraction_classes = {"no_botas", "sin_buff", "sin_chaleco", "sin_guantes", "sin_uniforme"}
 
-    # Si existe el equipo positivo, eliminar la infracción
-    final_boxes = []
-    for b in valid_boxes:
-        cname = b[0]
-        # Si es una infracción y existe su equipo positivo correspondiente, skip
-        if cname in infraction_map and infraction_map[cname] in detected_items:
-            print(f"⏭️  Eliminando infracción {cname} porque {infraction_map[cname]} está detectado")
-            continue
-        final_boxes.append(b)
+    equipment_boxes = [b for b in valid_boxes if b[0] not in infraction_classes]
+    infraction_boxes = [b for b in valid_boxes if b[0] in infraction_classes]
 
-    valid_boxes = final_boxes
+    valid_boxes = equipment_boxes  # Solo equipos, no infracciones
     detected_items = set(b[0] for b in valid_boxes)
 
     # 11. Fallback HSV para uniforme
