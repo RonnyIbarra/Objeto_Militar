@@ -76,7 +76,7 @@ CLASS_CONFIDENCES = {
     "botas": 0.25,
     "buff": 0.25,
     "casco": 0.22,
-    "chaleco": 0.25,
+    "chaleco": 0.20,  # Bajado de 0.25 para detectar mejor
     "gafas": 0.25,
     "guantes": 0.15,  # Bajado de 0.20 para detectar mejor
     "no_botas": 0.25,
@@ -85,7 +85,7 @@ CLASS_CONFIDENCES = {
     "sin_chaleco": 0.30,
     "sin_guantes": 0.22,
     "sin_uniforme": 0.30,
-    "uniforme": 0.25,
+    "uniforme": 0.20,  # Bajado de 0.25 para detectar mejor
 }
 
 def is_punta_de_armaP(pistola_box, armaP_boxes, person_cx):
