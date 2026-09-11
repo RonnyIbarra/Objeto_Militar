@@ -78,7 +78,7 @@ CLASS_CONFIDENCES = {
     "casco": 0.22,
     "chaleco": 0.25,
     "gafas": 0.25,
-    "guantes": 0.20,
+    "guantes": 0.15,  # Bajado de 0.20 para detectar mejor
     "no_botas": 0.25,
     "pistola": 0.10,
     "sin_buff": 0.30,
@@ -123,9 +123,13 @@ def is_punta_de_armaP(pistola_box, armaP_boxes, person_cx):
 
     return False
 
-def should_remap_glove_to_holster(box, p_box, has_armaP, tipo_cuerpo):
+def should_remap_glove_to_holster(box, p_box, has_armaP, tipo_cuerpo, image=None):
     """
     Detecta si 'guantes' en el muslo es realmente una funda de pistola (confusión del modelo).
+    Validación por:
+    - Ubicación (muslo/cintura)
+    - Forma (aspect ratio)
+    - Color (negra/oscura para funda vs piel/gris para guantes)
     Del algoritmo pipeline_militar.py
     """
     if not has_armaP or tipo_cuerpo != "Cuerpo Completo":
@@ -348,7 +352,7 @@ def detect_in_crops(image, person_bbox, full_image_results=None, flipped_image_r
     remapped = []
     for b in raw_candidates:
         cname, conf, bx1, by1, bx2, by2 = b
-        if cname == "guantes" and should_remap_glove_to_holster((bx1, by1, bx2, by2), (x1, y1, x2, y2), has_armaP, tipo_cuerpo):
+        if cname == "guantes" and should_remap_glove_to_holster((bx1, by1, bx2, by2), (x1, y1, x2, y2), has_armaP, tipo_cuerpo, image):
             remapped.append(("pistola", conf, bx1, by1, bx2, by2))
         else:
             remapped.append(b)
