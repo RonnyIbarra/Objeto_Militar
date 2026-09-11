@@ -128,8 +128,7 @@ def should_remap_glove_to_holster(box, p_box, has_armaP, tipo_cuerpo, image=None
     Detecta si 'guantes' en el muslo es realmente una funda de pistola (confusión del modelo).
     Validación por:
     - Ubicación (muslo/cintura)
-    - Forma (aspect ratio)
-    - Color (negra/oscura para funda vs piel/gris para guantes)
+    - Forma (aspect ratio: pistola ~0.3-0.6, guantes ~0.7-1.3)
     Del algoritmo pipeline_militar.py
     """
     if not has_armaP or tipo_cuerpo != "Cuerpo Completo":
@@ -139,6 +138,8 @@ def should_remap_glove_to_holster(box, p_box, has_armaP, tipo_cuerpo, image=None
     px1, py1, px2, py2 = p_box
     pw, ph = px2 - px1, py2 - py1
     b_cy = (by1 + by2) / 2
+    b_width = bx2 - bx1
+    b_height = by2 - by1
 
     # Zona de medio muslo
     if not (py1 + ph * 0.48 <= b_cy <= py1 + ph * 0.80):
@@ -146,6 +147,18 @@ def should_remap_glove_to_holster(box, p_box, has_armaP, tipo_cuerpo, image=None
 
     # Posición lateral (muslo)
     is_lateral = (bx1 < px1 + pw * 0.35) or (bx2 > px2 - pw * 0.35)
+    if not is_lateral:
+        return False
+
+    # Análisis de aspecto ratio: pistola es alargada verticalmente
+    # Pistola: ratio ancho/alto ~0.3-0.6 (más alto que ancho)
+    # Guantes: ratio ancho/alto ~0.7-1.3 (más redondeados)
+    if b_height > 0:
+        aspect_ratio = b_width / b_height
+        # Si es más alargado verticalmente (ratio bajo), probablemente es pistola
+        is_elongated = aspect_ratio < 0.65
+        return is_elongated
+
     return is_lateral
 
 def nms_boxes(boxes, iou_thresh=0.40):
